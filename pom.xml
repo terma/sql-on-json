@@ -7,6 +7,7 @@
     <version>0.0.2-SNAPSHOT</version>
 
     <name>SQL on JSON</name>
+    <description>SQL on JSON</description>
     <url>https://github.com/terma/sql-on-json</url>
 
     <licenses>
