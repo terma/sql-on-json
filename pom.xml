@@ -4,7 +4,7 @@
 
     <groupId>com.github.terma</groupId>
     <artifactId>sql-on-json</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2-SNAPSHOT</version>
 
     <name>SQL on JSON</name>
     <url>https://github.com/terma/sql-on-json</url>
@@ -186,7 +186,7 @@
         <developerConnection>scm:git:https://github.com/terma/sql-on-json.git</developerConnection>
         <connection>scm:git:https://github.com/terma/sql-on-json.git</connection>
         <url>https://github.com/terma/sql-on-json</url>
-        <tag>sql-on-json-0.0.1</tag>
+        <tag>HEAD</tag>
     </scm>
 
 </project>
