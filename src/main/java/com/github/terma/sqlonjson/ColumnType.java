@@ -52,7 +52,7 @@ enum ColumnType {
     };
 
     public String getSqlName() {
-        return "varchar(1000)";
+        return "varchar(8000)";
     }
 
     public void setToPs(PreparedStatement ps, int index, JsonElement value) throws SQLException {

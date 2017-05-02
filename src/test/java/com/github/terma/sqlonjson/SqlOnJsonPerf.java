@@ -26,7 +26,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JsonToSqlPerf {
+/**
+ * x10000 => 1.5 sec with full scan for columns information
+ */
+public class SqlOnJsonPerf {
 
     private static StringBuilder generateJson() {
         StringBuilder jsonBuilder = new StringBuilder();
@@ -46,7 +49,7 @@ public class JsonToSqlPerf {
     public void test() throws SQLException, ClassNotFoundException {
         String json = generateJson().toString();
 
-        try (Connection c = JsonToSql.convertPlain(json)) {
+        try (Connection c = SqlOnJson.convertPlain(json)) {
             try (PreparedStatement ps = c.prepareStatement("select * as count_of_rows from sources order by id desc limit 5")) {
                 try (ResultSet rs = ps.executeQuery()) {
                     printResultSet(rs);

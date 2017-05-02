@@ -16,17 +16,18 @@ limitations under the License.
 
 package com.github.terma.sqlonjson;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 
-public class JsonToSqlTest {
+public class SqlOnJsonTest {
 
     @Test
     public void representEmptyJsonAsEmptyDb() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("")) {
+        try (Connection c = SqlOnJson.convertPlain("")) {
             ResultSet rs = c.getMetaData().getTables(null, null, "a", null);
             Assert.assertFalse(rs.next());
         }
@@ -34,7 +35,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representObjectWithEmptyArrayPropertyAsEmptyDb() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{a:[]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{a:[]}")) {
             ResultSet rs = c.getMetaData().getTables(null, null, "a", null);
             Assert.assertFalse(rs.next());
         }
@@ -42,7 +43,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representObjectWithArrayPropertyAsTableInDb() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{a:[{id:12000,name:\"super\"},{id:90,name:\"remta\"}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{a:[{id:12000,name:\"super\"},{id:90,name:\"remta\"}]}")) {
             ResultSet rs = c.prepareStatement("select * from a").executeQuery();
             rs.next();
             Assert.assertEquals(12000, rs.getLong("id"));
@@ -54,8 +55,40 @@ public class JsonToSqlTest {
     }
 
     @Test
+    public void ignoreNonAlphaNumberAndNonAlphaFirstCharacters() throws Exception {
+        try (Connection c = SqlOnJson.convertPlain("{\"_AmO_(Nit)\":[{\"_i-d,()rumbA\":12000,_12:90}]}")) {
+            ResultSet rs = c.prepareStatement("select * from iamo_nit").executeQuery();
+            rs.next();
+            Assert.assertEquals(12000, rs.getLong("iidrumba"));
+            Assert.assertEquals(90, rs.getLong("i12"));
+        }
+    }
+
+    @Test
+    public void support8kOfCharactersForStringFields() throws Exception {
+        String string8k = StringUtils.repeat('z', 8 * 1000);
+        try (Connection c = SqlOnJson.convertPlain("{longs:[{str:\"" + string8k + "\"}]}")) {
+            ResultSet rs = c.prepareStatement("select * from longs").executeQuery();
+            rs.next();
+            Assert.assertEquals(string8k, rs.getString("str"));
+        }
+    }
+
+    @Test
+    public void supportCaseWhenNonFirstObjectHasMoreProperties() throws Exception {
+        try (Connection c = SqlOnJson.convertPlain("{nosql:[{id:12},{id:15,mid:90}]}")) {
+            ResultSet rs = c.prepareStatement("select * from nosql").executeQuery();
+            rs.next();
+            Assert.assertEquals(12, rs.getLong("id"));
+            rs.next();
+            Assert.assertEquals(15, rs.getLong("id"));
+            Assert.assertEquals(90, rs.getLong("mid"));
+        }
+    }
+
+    @Test
     public void representNumberPropertyAsLong() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{a:[{o:" + Long.MAX_VALUE + "},{o:" + Long.MIN_VALUE + "}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{a:[{o:" + Long.MAX_VALUE + "},{o:" + Long.MIN_VALUE + "}]}")) {
             ResultSet rs = c.prepareStatement("select * from a").executeQuery();
             Assert.assertEquals("BIGINT", rs.getMetaData().getColumnTypeName(1));
             rs.next();
@@ -67,7 +100,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representNumberWithPrecisionPropertyAsDouble() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{a:[{o:0.009},{o:-12.45}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{a:[{o:0.009},{o:-12.45}]}")) {
             ResultSet rs = c.prepareStatement("select * from a").executeQuery();
             Assert.assertEquals("DOUBLE", rs.getMetaData().getColumnTypeName(1));
             rs.next();
@@ -79,7 +112,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representObjectWithArrayPropertyWithMissedAttributesAsTableInDbWithNull() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{a:[{id:12000,name:\"super\"},{id:90}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{a:[{id:12000,name:\"super\"},{id:90}]}")) {
             ResultSet rs = c.prepareStatement("select * from a").executeQuery();
             rs.next();
             Assert.assertEquals(12000, rs.getLong("id"));
@@ -92,7 +125,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representObjectWithArrayPropertiesAsMultipleTables() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{orders:[{id:12}],history:[{orderId:12}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{orders:[{id:12}],history:[{orderId:12}]}")) {
             ResultSet rs1 = c.prepareStatement("select * from orders").executeQuery();
             rs1.next();
             Assert.assertEquals(12, rs1.getLong("id"));
@@ -105,7 +138,7 @@ public class JsonToSqlTest {
 
     @Test
     public void representEmbeddedObjectAsString() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{orders:[{em:{a:12}}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{orders:[{em:{a:12}}]}")) {
             ResultSet rs1 = c.prepareStatement("select * from orders").executeQuery();
             rs1.next();
             Assert.assertEquals("{\"a\":12}", rs1.getString("em"));
@@ -115,7 +148,7 @@ public class JsonToSqlTest {
 
     @Test
     public void supportEmbeddedArrayToTable() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{orders:[{em:[{a:-7}]}]}")) {
+        try (Connection c = SqlOnJson.convertPlain("{orders:[{em:[{a:-7}]}]}")) {
             ResultSet rs1 = c.prepareStatement("select * from orders").executeQuery();
             rs1.next();
             Assert.assertEquals("[{\"a\":-7}]", rs1.getString("em"));
@@ -125,7 +158,7 @@ public class JsonToSqlTest {
 
     @Test
     public void supportEmbeddedObjectAsTable() throws Exception {
-        try (Connection c = JsonToSql.convertPlain("{orders:{em:[{a:-7}]}}")) {
+        try (Connection c = SqlOnJson.convertPlain("{orders:{em:[{a:-7}]}}")) {
             ResultSet rs1 = c.getMetaData().getTables(null, null, "orders", null);
             Assert.assertFalse(rs1.next());
         }
