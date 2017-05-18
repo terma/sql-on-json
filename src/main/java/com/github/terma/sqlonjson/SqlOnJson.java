@@ -16,30 +16,51 @@ limitations under the License.
 
 package com.github.terma.sqlonjson;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
+/**
+ * Convert JSON to in memory SQL database with tables created from JSON.
+ * <p>
+ * Not tread safe
+ * <p>
+ * Create in memory DB {@link org.hsqldb.jdbc.JDBCDriver} which will be destroyed as soon as
+ * connection will be closed.
+ * <p>
+ * {@link JsonIterator} defines what part of JSON will be converted to tables.
+ */
 @SuppressWarnings("WeakerAccess")
 public class SqlOnJson {
 
+    private static final String DRIVER_CLASS = "org.hsqldb.jdbc.JDBCDriver";
     private static final Logger LOGGER = Logger.getLogger(SqlOnJson.class.getName());
 
+    /**
+     * Convert JSON to SQL and assume that root of JSON is Object properties
+     * for which with array type could be converted to tables {@link Plain}
+     *
+     * @param json - json
+     * @return connection to in mem db with tables
+     * @throws SQLException
+     * @throws ClassNotFoundException
+     */
     public static Connection convertPlain(String json) throws SQLException, ClassNotFoundException {
         return convert(new Plain(json));
     }
 
     public static Connection convert(JsonIterator jsonIterator) throws SQLException, ClassNotFoundException {
-        Class.forName("org.hsqldb.jdbc.JDBCDriver");
+        Class.forName(DRIVER_CLASS);
         final Connection c = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb;shutdown=true", "SA", "");
         try {
             final long start = System.currentTimeMillis();
@@ -119,64 +140,6 @@ public class SqlOnJson {
         if (first.matches("[^a-zA-Z]")) first = "i";
 
         return first + columnName.substring(1).replaceAll("[^a-zA-Z0-9_]+", "");
-    }
-
-    private interface JsonIterator extends Iterator<JsonTable> {
-
-        int getJsonLength();
-
-    }
-
-    private static class JsonTable {
-        public final String name;
-        public final JsonArray data;
-
-        private JsonTable(String name, JsonArray data) {
-            this.name = name;
-            this.data = data;
-        }
-    }
-
-    private static class Plain implements JsonIterator {
-
-        private final int jsonLength;
-        private final Iterator<JsonTable> iterator;
-
-        public Plain(String json) {
-            List<JsonTable> list = new ArrayList<>();
-            if (StringUtils.isNoneEmpty(json)) {
-                final JsonParser parser = new JsonParser();
-                final JsonObject jsonObject = parser.parse(json).getAsJsonObject();
-                for (Map.Entry<String, JsonElement> e : jsonObject.entrySet()) {
-                    if (e.getValue().isJsonArray()) {
-                        list.add(new JsonTable(e.getKey(), e.getValue().getAsJsonArray()));
-                    }
-                }
-            }
-            jsonLength = json.length();
-            iterator = list.iterator();
-        }
-
-        @Override
-        public int getJsonLength() {
-            return jsonLength;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return iterator.hasNext();
-        }
-
-        @Override
-        public JsonTable next() {
-            return iterator.next();
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-
     }
 
 }
