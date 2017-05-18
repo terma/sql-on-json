@@ -23,6 +23,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.ResultSet;
 
+@SuppressWarnings("SqlNoDataSourceInspection")
 public class SqlOnJsonTest {
 
     @Test
@@ -83,6 +84,19 @@ public class SqlOnJsonTest {
             rs.next();
             Assert.assertEquals(15, rs.getLong("id"));
             Assert.assertEquals(90, rs.getLong("mid"));
+        }
+    }
+
+    @Test
+    public void supportParallelWorkWithTwoDb() throws Exception {
+        try (
+                Connection c1 = SqlOnJson.convertPlain("{nosql:[{id:12},{id:15,mid:90}]}");
+                Connection c2 = SqlOnJson.convertPlain("{nosql:[{a:1}]}");
+        ) {
+            ResultSet rs1 = c1.prepareStatement("select * from nosql").executeQuery();
+            Assert.assertTrue(rs1.next());
+            ResultSet rs2 = c2.prepareStatement("select * from nosql").executeQuery();
+            Assert.assertTrue(rs2.next());
         }
     }
 

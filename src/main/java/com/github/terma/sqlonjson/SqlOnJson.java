@@ -28,21 +28,23 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
  * Convert JSON to in memory SQL database with tables created from JSON.
  * <p>
- * Not tread safe
- * <p>
  * Create in memory DB {@link org.hsqldb.jdbc.JDBCDriver} which will be destroyed as soon as
  * connection will be closed.
+ * <p>
+ * Thread safe. Each call will create new independent SQL DB.
  * <p>
  * {@link JsonIterator} defines what part of JSON will be converted to tables.
  */
 @SuppressWarnings("WeakerAccess")
 public class SqlOnJson {
 
+    private static final AtomicInteger COUNTER = new AtomicInteger();
     private static final String DRIVER_CLASS = "org.hsqldb.jdbc.JDBCDriver";
     private static final Logger LOGGER = Logger.getLogger(SqlOnJson.class.getName());
 
@@ -61,7 +63,11 @@ public class SqlOnJson {
 
     public static Connection convert(JsonIterator jsonIterator) throws SQLException, ClassNotFoundException {
         Class.forName(DRIVER_CLASS);
-        final Connection c = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb;shutdown=true", "SA", "");
+
+        if (COUNTER.get() > Integer.MAX_VALUE - 10) COUNTER.set(0); // to avoid possible overflow, who knows =)
+        final int id = COUNTER.incrementAndGet();
+
+        final Connection c = DriverManager.getConnection("jdbc:hsqldb:mem:sql_on_json_" + id + ";shutdown=true", "SA", "");
         try {
             final long start = System.currentTimeMillis();
 
