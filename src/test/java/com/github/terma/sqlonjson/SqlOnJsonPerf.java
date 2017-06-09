@@ -49,8 +49,8 @@ public class SqlOnJsonPerf {
     public void test() throws SQLException, ClassNotFoundException {
         String json = generateJson().toString();
 
-        try (Connection c = SqlOnJson.convertPlain(json)) {
-            try (PreparedStatement ps = c.prepareStatement("select * as count_of_rows from sources order by id desc limit 5")) {
+        try (Connection c = new SqlOnJson().convertPlain(json)) {
+            try (PreparedStatement ps = c.prepareStatement("select  as count_of_rows from sources order by id desc limit 5")) {
                 try (ResultSet rs = ps.executeQuery()) {
                     printResultSet(rs);
                 }

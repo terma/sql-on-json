@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 /**
  * Convert JSON to in memory SQL database with tables created from JSON.
  * <p>
- * Create in memory DB {@link org.hsqldb.jdbc.JDBCDriver} which will be destroyed as soon as
+ * Create in memory DB which will be destroyed as soon as
  * connection will be closed.
  * <p>
  * Thread safe. Each call will create new independent SQL DB.
@@ -44,9 +44,68 @@ import java.util.logging.Logger;
 @SuppressWarnings("WeakerAccess")
 public class SqlOnJson {
 
-    private static final AtomicInteger COUNTER = new AtomicInteger();
-    private static final String DRIVER_CLASS = "org.hsqldb.jdbc.JDBCDriver";
+    public static final String INSTANCE_ID_PLACEHOLDER = "<INSTANCE_ID>";
+
+    public static final String DEFAULT_DRIVER = "org.h2.Driver";
+    public static final String DEFAULT_URL = "jdbc:h2:mem:";
+    public static final String DEFAULT_USERNAME = "";
+    public static final String DEFAULT_PASSWORD = "";
+
     private static final Logger LOGGER = Logger.getLogger(SqlOnJson.class.getName());
+
+    private final AtomicInteger counter;
+    private final String driver;
+    private final String url;
+    private final String username;
+    private final String password;
+
+    /**
+     * @param driver DB driver class which implement JDBC interface
+     * @param url    regular JDBC URL string with optional {@link SqlOnJson#INSTANCE_ID_PLACEHOLDER} placeholder which will be
+     *               replaced on instance ID during conversion to make sure that all instances are unique
+     */
+    public SqlOnJson(String driver, String url, String username, String password) {
+        this.counter = new AtomicInteger();
+        this.driver = driver;
+        this.url = url;
+        this.username = username;
+        this.password = password;
+    }
+
+    /**
+     * With default DB H2 in in-memory private mode (DB life until connection will be closed)
+     */
+    public SqlOnJson() {
+        this(DEFAULT_DRIVER, DEFAULT_URL, DEFAULT_USERNAME, DEFAULT_PASSWORD);
+    }
+
+    private static LinkedHashMap<String, ColumnType> getColumns(JsonTable jsonTable) {
+        final LinkedHashMap<String, ColumnType> cls = new LinkedHashMap<>();
+
+        for (int i = 0; i < jsonTable.data.size(); i++) {
+            final JsonObject jsonObject = jsonTable.data.get(i).getAsJsonObject();
+            for (Map.Entry<String, JsonElement> part : jsonObject.entrySet()) {
+                ColumnType columnType = ColumnType.STRING;
+                if (part.getValue().isJsonPrimitive()) {
+                    if (part.getValue().getAsString().matches("[-0-9]+")) {
+                        columnType = ColumnType.BIGINT;
+                    } else if (part.getValue().getAsString().matches("[-0-9.]+")) {
+                        columnType = ColumnType.DOUBLE;
+                    }
+                }
+
+                cls.put(part.getKey(), columnType);
+            }
+        }
+        return cls;
+    }
+
+    private static String nameToSqlName(final String columnName) {
+        String first = columnName.substring(0, 1);
+        if (first.matches("[^a-zA-Z]")) first = "i";
+
+        return first + columnName.substring(1).replaceAll("[^a-zA-Z0-9_]+", "");
+    }
 
     /**
      * Convert JSON to SQL and assume that root of JSON is Object properties
@@ -57,17 +116,17 @@ public class SqlOnJson {
      * @throws SQLException
      * @throws ClassNotFoundException
      */
-    public static Connection convertPlain(String json) throws SQLException, ClassNotFoundException {
+    public Connection convertPlain(String json) throws SQLException, ClassNotFoundException {
         return convert(new Plain(json));
     }
 
-    public static Connection convert(JsonIterator jsonIterator) throws SQLException, ClassNotFoundException {
-        Class.forName(DRIVER_CLASS);
+    public Connection convert(JsonIterator jsonIterator) throws SQLException, ClassNotFoundException {
+        Class.forName(driver);
 
-        if (COUNTER.get() > Integer.MAX_VALUE - 10) COUNTER.set(0); // to avoid possible overflow, who knows =)
-        final int id = COUNTER.incrementAndGet();
+        if (counter.get() > Integer.MAX_VALUE - 10) counter.set(0); // to avoid possible overflow, who knows =)
+        final int id = counter.incrementAndGet();
 
-        final Connection c = DriverManager.getConnection("jdbc:hsqldb:mem:sql_on_json_" + id + ";shutdown=true", "SA", "");
+        final Connection c = DriverManager.getConnection(url.replaceAll(INSTANCE_ID_PLACEHOLDER, String.valueOf(id)), username, password);
         try {
             final long start = System.currentTimeMillis();
 
@@ -118,34 +177,6 @@ public class SqlOnJson {
             throw exception;
         }
         return c;
-    }
-
-    private static LinkedHashMap<String, ColumnType> getColumns(JsonTable jsonTable) {
-        final LinkedHashMap<String, ColumnType> cls = new LinkedHashMap<>();
-
-        for (int i = 0; i < jsonTable.data.size(); i++) {
-            final JsonObject jsonObject = jsonTable.data.get(i).getAsJsonObject();
-            for (Map.Entry<String, JsonElement> part : jsonObject.entrySet()) {
-                ColumnType columnType = ColumnType.STRING;
-                if (part.getValue().isJsonPrimitive()) {
-                    if (part.getValue().getAsString().matches("[-0-9]+")) {
-                        columnType = ColumnType.BIGINT;
-                    } else if (part.getValue().getAsString().matches("[-0-9.]+")) {
-                        columnType = ColumnType.DOUBLE;
-                    }
-                }
-
-                cls.put(part.getKey(), columnType);
-            }
-        }
-        return cls;
-    }
-
-    private static String nameToSqlName(final String columnName) {
-        String first = columnName.substring(0, 1);
-        if (first.matches("[^a-zA-Z]")) first = "i";
-
-        return first + columnName.substring(1).replaceAll("[^a-zA-Z0-9_]+", "");
     }
 
 }
