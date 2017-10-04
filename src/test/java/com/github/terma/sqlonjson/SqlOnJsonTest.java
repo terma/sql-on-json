@@ -204,7 +204,7 @@ public class SqlOnJsonTest {
 
     @Test
     public void supportCustomDb() throws Exception {
-        try (Connection c = new SqlOnJson("org.hsqldb.jdbc.JDBCDriver", "jdbc:hsqldb:mem:sql_on_json_test;shutdown=true", "sa", "")
+        try (Connection c = new SqlOnJson("org.h2.Driver", "jdbc:h2:mem:", "", "")
                 .convertPlain("{orders:[{user_id:13,id:900}],users:[{id:13}]}")) {
             ResultSet rs1 = c.prepareStatement("select o.id as oid, u.id as uid from orders o left join users u on user_id = u.id").executeQuery();
             rs1.next();

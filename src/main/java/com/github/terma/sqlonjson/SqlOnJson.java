@@ -46,9 +46,9 @@ public class SqlOnJson {
 
     public static final String INSTANCE_ID_PLACEHOLDER = "<INSTANCE_ID>";
 
-    public static final String DEFAULT_DRIVER = "org.h2.Driver";
-    public static final String DEFAULT_URL = "jdbc:h2:mem:";
-    public static final String DEFAULT_USERNAME = "";
+    public static final String DEFAULT_DRIVER = "org.hsqldb.jdbc.JDBCDriver";
+    public static final String DEFAULT_URL = "jdbc:hsqldb:mem:sql_on_json_" + INSTANCE_ID_PLACEHOLDER + ";shutdown=true";
+    public static final String DEFAULT_USERNAME = "sa";
     public static final String DEFAULT_PASSWORD = "";
 
     private static final Logger LOGGER = Logger.getLogger(SqlOnJson.class.getName());
