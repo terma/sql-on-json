@@ -94,7 +94,8 @@ public class SqlOnJson {
                     }
                 }
 
-                cls.put(part.getKey(), columnType);
+                ColumnType current = cls.get(part.getKey());
+                if (current == null || current != ColumnType.STRING) cls.put(part.getKey(), columnType);
             }
         }
         return cls;
