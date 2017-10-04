@@ -163,6 +163,18 @@ public class SqlOnJsonTest {
     }
 
     @Test
+    public void representNumericStringAsString() throws Exception {
+        try (Connection c = sqlOnJson.convertPlain("{t:[{a:\"super\"},{a:\"5\"}]}")) {
+            ResultSet rs = c.prepareStatement("select * from t").executeQuery();
+            rs.next();
+            Assert.assertEquals("super", rs.getString("a"));
+            rs.next();
+            Assert.assertEquals("5", rs.getString("a"));
+            Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test
     public void supportEmbeddedArrayToTable() throws Exception {
         try (Connection c = sqlOnJson.convertPlain("{orders:[{em:[{a:-7}]}]}")) {
             ResultSet rs1 = c.prepareStatement("select * from orders").executeQuery();
