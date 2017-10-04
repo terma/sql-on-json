@@ -6,10 +6,29 @@
 ## How to use
 
 ```java
-try (Connection c = sqlOnJson.convertPlain("{a:[{id:12000,name:\"super\"},{id:90,name:\"remta\"}]}")) {
+try (Connection c = new SqlOnJson().convertPlain("{a:[{id:12000,name:\"super\"},{id:90,name:\"remta\"}]}")) {
     ResultSet rs = c.prepareStatement("select * from a").executeQuery();
     while (rs.next()) {
         // my business logic
     }
 }
 ```
+
+## Use non default DB
+
+By default ```sql-on-json``` uses [HSQLDB](http://hsqldb.org/)
+
+```java
+final SqlOnJson sqlOnJson = new SqlOnJson("driver-class", "url", "user", "password");
+try (Connection c = sqlOnJson.convertPlain("{a:[{id:12000,name:\"super\"},{id:90,name:\"remta\"}]}")) {
+    ...
+}
+```
+
+For example you can use [H2](http://www.h2database.com/)
+```java
+final SqlOnJson sqlOnJson = new SqlOnJson("org.h2.Driver", "jdbc:h2:mem:", "", "");
+try (...)
+```
+
+To make DB URL unique per ```new SqlOnJson(...)``` you can use placeholder ```<INSTANCE_ID>``` in second parameter of constructor ```url```, for HSQLDB it will be ```jdbc:hsqldb:mem:sql_on_json_<INSTANCE_ID>;shutdown=true```
